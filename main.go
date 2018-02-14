@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 )
 
@@ -32,6 +33,15 @@ func main() {
 		all([]interface{}{a, b, c}, func(v []interface{}) {
 			for i, val := range v {
 				fmt.Printf("%d - %s \n", i, val)
+			}
+		})
+	})
+
+	calcTime(func() {
+		eachParallel([]interface{}{1, 2, 3, 4}, func(t interface{}) {
+			sleepTime, ok := t.(int)
+			if ok {
+				time.Sleep(time.Duration(sleepTime) * time.Second)
 			}
 		})
 	})
@@ -66,6 +76,20 @@ func all(actions []interface{}, callback func(v []interface{})) {
 	}
 
 	callback(finalResp)
+}
+
+func eachParallel(elements []interface{}, function func(element interface{})) {
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(elements))
+
+	defer waitGroup.Wait()
+
+	for _, e := range elements {
+		go func(e interface{}) {
+			defer waitGroup.Done()
+			function(e)
+		}(e)
+	}
 }
 
 func calcTime(c func()) {

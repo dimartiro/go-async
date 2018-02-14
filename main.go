@@ -2,39 +2,38 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 )
 
 func main() {
-	a := func() string {
+	a := func() interface{} {
 		time.Sleep(1 * time.Second)
 		return "a"
 	}
 
-	b := func() string {
+	b := func() interface{} {
 		time.Sleep(3 * time.Second)
 		return "b"
 	}
 
-	c := func() string {
+	c := func() interface{} {
 		time.Sleep(2 * time.Second)
 		return "c"
 	}
 
 	calcTime(func() {
-		any([]interface{}{a, b, c}, func(v interface{}) {
+		any(func(v interface{}) {
 			fmt.Println(v)
-		})
+		}, a, b, c)
 	})
 
 	calcTime(func() {
-		all([]interface{}{a, b, c}, func(v []interface{}) {
+		all(func(v []interface{}) {
 			for i, val := range v {
 				fmt.Printf("%d - %s \n", i, val)
 			}
-		})
+		}, a, b, c)
 	})
 
 	calcTime(func() {
@@ -47,27 +46,25 @@ func main() {
 	})
 }
 
-func any(actions []interface{}, callback func(v interface{})) {
+func any(callback func(v interface{}), actions ...func() interface{}) {
 	resp := make(chan interface{}, len(actions))
 
-	for _, act := range actions {
-		go func(act interface{}, resp chan<- interface{}) {
-			val := reflect.ValueOf(act)
-			resp <- val.Call(nil)
-		}(act, resp)
+	for _, f := range actions {
+		go func(f func() interface{}, resp chan<- interface{}) {
+			resp <- f()
+		}(f, resp)
 	}
 
 	callback(<-resp)
 }
 
-func all(actions []interface{}, callback func(v []interface{})) {
+func all(callback func(v []interface{}), actions ...func() interface{}) {
 	resp := make(chan interface{}, len(actions))
 
-	for _, act := range actions {
-		go func(act interface{}, resp chan<- interface{}) {
-			val := reflect.ValueOf(act)
-			resp <- val.Call(nil)
-		}(act, resp)
+	for _, f := range actions {
+		go func(f func() interface{}, resp chan<- interface{}) {
+			resp <- f()
+		}(f, resp)
 	}
 
 	finalResp := make([]interface{}, len(actions))
